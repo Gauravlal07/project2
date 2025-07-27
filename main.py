@@ -34,6 +34,10 @@ def make_plot(df):
     buf.seek(0)
     b64 = base64.b64encode(buf.read()).decode()
     return f"data:image/png;base64,{b64}"
+@app.get("/")
+def read_root():
+    return {"message": "Welcome! Use POST /api/ to send data."}
+
 
 @app.post("/api/")
 async def analyze(file: UploadFile = File(...)):
