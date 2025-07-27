@@ -1,7 +1,7 @@
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
 import aiohttp, base64, io, re
-import duckdb, pandas as pd
+import duckdb, pandas as np
 import matplotlib.pyplot as plt
 
 app = FastAPI()
@@ -70,7 +70,7 @@ async def analyze(file: UploadFile = File(...)):
         df["date_of_registration"] = pd.to_datetime(df["date_of_registration"])
         df["delay_days"] = (df["decision_date"] - df["date_of_registration"]).dt.days
         df["year"] = df["decision_date"].dt.year
-        slope = pd.np.polyfit(df["year"], df["delay_days"], 1)[0]
+        slope = np.polyfit(df["year"], df["delay_days"], 1)[0]
         plot = make_plot(df.rename(columns={"year": "Rank", "delay_days": "Peak"}))
         return JSONResponse(["Madras High Court", round(slope, 6), "See plot", plot])
 
