@@ -16,7 +16,7 @@ from openai import OpenAI
 app = FastAPI()
 
 # 🔐 Replace with your real OpenRouter API key
-OPENROUTER_API_KEY = "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"
+OPENROUTER_API_KEY = "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"
 
 # Setup OpenAI SDK for OpenRouter
 client = OpenAI(
