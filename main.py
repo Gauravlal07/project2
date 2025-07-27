@@ -22,7 +22,7 @@ async def process_file(file: UploadFile = File(...)):
     prompt_text = content.decode("utf-8")
 
     headers = {
-        "Authorization": f"Bearer {AIPIPE_API_KEY}",
+        "Authorization": f"Bearer {AI_PIPE_API_KEY}",
         "Content-Type": "application/json"
     }
 
