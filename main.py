@@ -9,78 +9,51 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import io
 
-
 app = FastAPI()
 
-# 🔐 Your API key from AI Pipe
-AIPIPE_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ"  # Replace with your actual key
+# 🔐 Insert your AI Pipe token below
+AIPIPE_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ"  # <<--- Drop your token (from aipipe.org/login) here
 
-AIPIPE_ENDPOINT = "https://aipipe.org/v1/chat/completions"
+API_URL = "https://aipipe.org/openrouter/v1/chat/completions"
 
 HEADERS = {
-    "Authorization": f"Bearer {AIPIPE_API_KEY}",
-    "Content-Type": "application/json",
-    "HTTP-Referer": "http://localhost:10000",  # Optional for attribution
-    "X-Title": "AI Pipe Data Agent"  # Optional
+    "Authorization": f"Bearer {AIPIPE_TOKEN}",
+    "Content-Type": "application/json"
 }
 
 @app.get("/")
-def read_root():
-    return {"message": "AI Pipe custom backend running!"}
+def root():
+    return {"message": "AI Pipe data‑analyst agent is running"}
 
-@app.post("/process/")
-async def process_file(file: UploadFile = File(...)):
+@app.post("/api/")
+async def analyze(file: UploadFile = File(...)):
     try:
         prompt_text = (await file.read()).decode("utf-8")
 
         payload = {
-            "model": "openai/gpt-4o",  # or any model supported by AI Pipe
-            "messages": [{"role": "user", "content": prompt_text}]
+            "model": "openai/gpt-4.1-nano",  # model accessible via AI Pipe
+            "messages": [
+                {"role": "user", "content": prompt_text}
+            ]
         }
 
-        async with httpx.AsyncClient() as client:
-            response = await client.post(AIPIPE_ENDPOINT, json=payload, headers=HEADERS)
+        async with httpx.AsyncClient(timeout=180.0) as client:
+            resp = await client.post(API_URL, headers=HEADERS, json=payload)
 
-        response.raise_for_status()
-        data = response.json()
-        return {"response": data["choices"][0]["message"]["content"]}
-    
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"error": str(e)})
+        resp.raise_for_status()
+        response = resp.json()
+        answer = response["choices"][0]["message"]["content"]
+        return {"response": answer}
 
-@app.post("/api/")
-async def analyze_file(file: UploadFile = File(...)):
-    try:
-        text = (await file.read()).decode("utf-8")
-
-        prompt = f"""You are a data analyst. The user has provided this task:
-{text}
-Break it into steps. Then write Python code to solve it. Include DuckDB or pandas where necessary.
-Do not print anything. Return a JSON array like:
-[
-  answer_1,
-  answer_2,
-  correlation_value (float),
-  "data:image/png;base64,..."
-]
-If you generate a chart, return it as base64 URI string under 100kB.
-"""
-
-        payload = {
-            "model": "openai/gpt-4o",
-            "messages": [{"role": "user", "content": prompt}]
-        }
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(AIPIPE_ENDPOINT, json=payload, headers=HEADERS)
-
-        response.raise_for_status()
-        data = response.json()
-        return {"response": data["choices"][0]["message"]["content"]}
-
+    except httpx.HTTPStatusError as exc:
+        return JSONResponse(
+            status_code=exc.response.status_code,
+            content={"error": exc.response.text}
+        )
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=10000)
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", "10000")))
+
 
