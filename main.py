@@ -30,6 +30,9 @@ async def ask_ai_pipe(prompt: str) -> str:
         async with session.post(url, headers=headers, json=body) as resp:
             res = await resp.json()
             return res['choices'][0]['message']['content']
+@app.get("/")
+def read_root():
+    return {"message": "AI Pipe API is working!"}
 
 @app.post("/api/")
 async def analyze_file(file: UploadFile = File(...)):
