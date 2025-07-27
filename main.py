@@ -4,56 +4,61 @@ from openai import OpenAI
 import uvicorn
 import base64
 import pandas as pd
-import duckdb
+import duckd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
 
+# Load .env variables (AIPIPE_TOKEN should be set there)
+load_dotenv()
+
+AIPIPE_TOKEN = os.getenv("eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ")
+AI_ENDPOINT = "https://aipipe.org/openrouter/v1/chat/completions"
+AI_MODEL = "openai/gpt-4.1-nano"  # or other supported model
+
 app = FastAPI()
 
-# 🔐 Insert your AI Pipe token below
-AIPIPE_TOKEN = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ"  # <<--- Drop your token (from aipipe.org/login) here
-
-API_URL = "https://aipipe.org/openrouter/v1/chat/completions"
-
-HEADERS = {
-    "Authorization": f"Bearer {AIPIPE_TOKEN}",
-    "Content-Type": "application/json"
-}
 
 @app.get("/")
-def root():
-    return {"message": "AI Pipe data‑analyst agent is running"}
+def read_root():
+    return {"message": "API is live. Use POST /process/ to get answers."}
 
-@app.post("/api/")
-async def analyze(file: UploadFile = File(...)):
+
+@app.post("/process/")
+async def process(file: UploadFile):
     try:
-        prompt_text = (await file.read()).decode("utf-8")
+        content = await file.read()
+        question = content.decode("utf-8").strip()
 
-        payload = {
-            "model": "openai/gpt-4.1-nano",  # model accessible via AI Pipe
-            "messages": [
-                {"role": "user", "content": prompt_text}
-            ]
+        if not question:
+            return JSONResponse(status_code=400, content={"error": "Empty question"})
+
+        headers = {
+            "Authorization": f"Bearer {AIPIPE_TOKEN}",
+            "Content-Type": "application/json"
         }
 
-        async with httpx.AsyncClient(timeout=180.0) as client:
-            resp = await client.post(API_URL, headers=HEADERS, json=payload)
+        payload = {
+            "model": AI_MODEL,
+            "messages": [{"role": "user", "content": question}]
+        }
 
-        resp.raise_for_status()
-        response = resp.json()
-        answer = response["choices"][0]["message"]["content"]
-        return {"response": answer}
+        async with httpx.AsyncClient() as client:
+            response = await client.post(AI_ENDPOINT, json=payload, headers=headers)
 
-    except httpx.HTTPStatusError as exc:
-        return JSONResponse(
-            status_code=exc.response.status_code,
-            content={"error": exc.response.text}
-        )
+        if response.status_code != 200:
+            return JSONResponse(status_code=500, content={
+                "error": f"Failed to get response from AI Pipe",
+                "details": response.text
+            })
+
+        data = response.json()
+        answer = data["choices"][0]["message"]["content"]
+
+        return {"question": question, "answer": answer}
+
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-if __name__ == "__main__":
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.environ.get("PORT", "10000")))
 
 
