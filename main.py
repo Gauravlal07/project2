@@ -16,6 +16,32 @@ app = FastAPI()
 # 🔐 Place your AI Pipe token here
 AI_PIPE_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ"  # <<--- Replace this
 
+@app.post("/process/")
+async def process_file(file: UploadFile = File(...)):
+    content = await file.read()
+    prompt_text = content.decode("utf-8")
+
+    headers = {
+        "Authorization": f"Bearer {AIPIPE_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    data = {
+        "model": "gpt-3.5-turbo",  # Or whatever model your AI Pipe account supports
+        "messages": [{"role": "user", "content": prompt_text}]
+    }
+
+    async with aiohttp.ClientSession() as session:
+        async with session.post("https://api.aipipe.org/v1/chat/completions", headers=headers, json=data) as resp:
+            if resp.status == 200:
+                result = await resp.json()
+                return {"response": result['choices'][0]['message']['content']}
+            else:
+                return JSONResponse(
+                    content={"error": "Failed to get a response from AI Pipe."},
+                    status_code=resp.status
+                )
+
 async def ask_ai_pipe(prompt: str) -> str:
     url = "https://api.aipipe.org/v1/chat/completions"  # Replace if different
     headers = {
