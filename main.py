@@ -7,7 +7,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import io
-import duckd
+
 
 
 # Load .env variables (AIPIPE_TOKEN should be set there)
