@@ -6,3 +6,4 @@ requests
 duckdb
 matplotlib
 seaborn
+python-multipart
