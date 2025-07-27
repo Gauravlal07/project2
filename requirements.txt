@@ -9,5 +9,7 @@ seaborn
 python-multipart
 aiohttp
 httpx
+pandas
+
 
 
