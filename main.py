@@ -1,44 +1,56 @@
-from fastapi import FastAPI, File, UploadFile
-from fastapi.responses import JSONResponse
-import requests
+# main.py
+
+from fastapi import FastAPI, UploadFile, File
+import uvicorn
+import aiohttp
 import os
+import base64
+import pandas as pd
+import matplotlib.pyplot as plt
+import seaborn as sns
+import duckdb
+import io
 
 app = FastAPI()
 
-# 👇 PUT YOUR AI PIPE TOKEN HERE via environment variable in Render settings
-AIPIPE_API_KEY = os.getenv("eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ")
+# 🔐 Place your AI Pipe token here
+AI_PIPE_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ"  # <<--- Replace this
 
-# This is an example function - adjust the endpoint and payload to match AI Pipe's docs
-def call_aipipe(prompt_text: str):
-    url = "https://aipipe.org/api/generate"  # 🔁 Update if AI Pipe uses a different endpoint
-
+async def ask_ai_pipe(prompt: str) -> str:
+    url = "https://api.aipipe.org/v1/chat/completions"  # Replace if different
     headers = {
-        "Authorization": f"Bearer {AIPIPE_API_KEY}",
+        "Authorization": f"Bearer {AI_PIPE_API_KEY}",
         "Content-Type": "application/json"
     }
-
-    payload = {
-        "prompt": prompt_text,
-        "model": "gpt-3.5"  # 🔁 Change this to the correct model if needed
+    body = {
+        "model": "gpt-4",  # or whatever model you're allowed to use
+        "messages": [{"role": "user", "content": prompt}]
     }
-
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        response.raise_for_status()
-        return response.json()
-    except Exception as e:
-        return {"error": str(e)}
-
-@app.get("/")
-def read_root():
-    return {"message": "FastAPI is running with AI Pipe 🎉"}
+    async with aiohttp.ClientSession() as session:
+        async with session.post(url, headers=headers, json=body) as resp:
+            res = await resp.json()
+            return res['choices'][0]['message']['content']
 
 @app.post("/api/")
-async def process_file(file: UploadFile = File(...)):
-    try:
-        contents = await file.read()
-        prompt = contents.decode("utf-8")
-        result = call_aipipe(prompt)
-        return JSONResponse(content=result)
-    except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+async def analyze_file(file: UploadFile = File(...)):
+    text = (await file.read()).decode("utf-8")
+
+    # Step 1: Ask LLM to plan the task
+    prompt = f"""You are a data analyst. The user has provided this task:
+{text}
+Break it into steps. Then write Python code to solve it. Include DuckDB or pandas where necessary.
+Do not print anything. Return a JSON array like:
+[
+  answer_1,
+  answer_2,
+  correlation_value (float),
+  "data:image/png;base64,..."
+]
+If you generate a chart, return it as base64 URI string under 100kB.
+"""
+
+    answer = await ask_ai_pipe(prompt)
+    return answer
+
+if __name__ == "__main__":
+    uvicorn.run("main:app", host="0.0.0.0", port=10000)
