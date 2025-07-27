@@ -16,7 +16,7 @@ AI_PIPE_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHku
 
 # Initialize OpenAI SDK with AI Pipe endpoint
 client = OpenAI(
-    base_url="https://aipipe.org/v1",
+    base_url="https://aipipe.org/v1/chat/completions",
     api_key=AI_PIPE_API_KEY,
 )
 
