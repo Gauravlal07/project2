@@ -7,3 +7,5 @@ duckdb
 matplotlib
 seaborn
 python-multipart
+aiohttp
+
