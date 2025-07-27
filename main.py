@@ -1,45 +1,28 @@
-# main.py
 from fastapi import FastAPI, UploadFile, File
 from fastapi.responses import JSONResponse
-import uvicorn
-import pandas as pd
-import seaborn as sns
-import matplotlib.pyplot as plt
-import duckdb
-import io
-import base64
-import os
-
 from openai import OpenAI
+import uvicorn
+import base64
+import pandas as pd
+import duckdb
+import matplotlib.pyplot as plt
+import seaborn as sns
+import io
 
-# FastAPI App
 app = FastAPI()
 
-# 🔐 Replace with your real OpenRouter API key
-OPENROUTER_API_KEY = "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"
+# 🔐 Replace with your actual AI Pipe token
+AI_PIPE_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ"
 
-# Setup OpenAI SDK for OpenRouter
+# Initialize OpenAI SDK with AI Pipe endpoint
 client = OpenAI(
-    base_url="https://openrouter.ai/api/v1",
-    api_key=OPENROUTER_API_KEY,
+    base_url="https://aipipe.org/v1",
+    api_key=AI_PIPE_API_KEY,
 )
-
-async def ask_ai_pipe(prompt: str) -> str:
-    response = client.chat.completions.create(
-        extra_headers={
-            "HTTP-Referer": "https://your-project-name.onrender.com",  # Optional
-            "X-Title": "Data Analyst Agent",  # Optional
-        },
-        model="openai/gpt-4o",
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
-    )
-    return response.choices[0].message.content
 
 @app.get("/")
 def read_root():
-    return {"message": "AI Pipe (OpenRouter) API is working!"}
+    return {"message": "AI Pipe API is working!"}
 
 @app.post("/process/")
 async def process_file(file: UploadFile = File(...)):
@@ -47,16 +30,28 @@ async def process_file(file: UploadFile = File(...)):
     prompt_text = content.decode("utf-8")
 
     try:
-        result = await ask_ai_pipe(prompt_text)
-        return {"response": result}
+        completion = client.chat.completions.create(
+            model="openai/gpt-4o",
+            messages=[
+                {"role": "user", "content": prompt_text}
+            ],
+            extra_headers={
+                "HTTP-Referer": "https://yourdomain.com",  # Optional
+                "X-Title": "Your App Title",               # Optional
+            }
+        )
+        return {"response": completion.choices[0].message.content}
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        return JSONResponse(
+            content={"error": str(e)},
+            status_code=500
+        )
 
 @app.post("/api/")
 async def analyze_file(file: UploadFile = File(...)):
     text = (await file.read()).decode("utf-8")
 
-    # Step 1: Ask LLM to plan the task
+    # Compose system prompt for data analysis
     prompt = f"""You are a data analyst. The user has provided this task:
 {text}
 Break it into steps. Then write Python code to solve it. Include DuckDB or pandas where necessary.
@@ -71,10 +66,20 @@ If you generate a chart, return it as base64 URI string under 100kB.
 """
 
     try:
-        answer = await ask_ai_pipe(prompt)
-        return answer
+        completion = client.chat.completions.create(
+            model="openai/gpt-4o",
+            messages=[{"role": "user", "content": prompt}],
+            extra_headers={
+                "HTTP-Referer": "https://yourdomain.com",  # Optional
+                "X-Title": "Your App Title",               # Optional
+            }
+        )
+        return {"response": completion.choices[0].message.content}
     except Exception as e:
-        return JSONResponse(content={"error": str(e)}, status_code=500)
+        return JSONResponse(
+            content={"error": str(e)},
+            status_code=500
+        )
 
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=10000)
