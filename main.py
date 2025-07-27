@@ -14,7 +14,7 @@ import io
 app = FastAPI()
 
 # 🔐 Place your AI Pipe token here
-AI_PIPE_API_KEY = "eyJhbGciOiJIUzI1NiJ9.eyJlbWFpbCI6IjI0ZjEwMDE2MTlAZHMuc3R1ZHkuaWl0bS5hYy5pbiJ9.G1z9xdDGSJ9ySQnW-yAPMu9UtKf4erFV12cWYq8jeMQ"  # <<--- Replace this
+AI_PIPE_API_KEY = "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"  # <<--- Replace this
 
 @app.post("/process/")
 async def process_file(file: UploadFile = File(...)):
@@ -32,7 +32,7 @@ async def process_file(file: UploadFile = File(...)):
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post("https://aipipe.org/playground ", headers=headers, json=data) as resp:
+        async with session.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data) as resp:
             if resp.status == 200:
                 result = await resp.json()
                 return {"response": result['choices'][0]['message']['content']}
@@ -43,7 +43,7 @@ async def process_file(file: UploadFile = File(...)):
                 )
 
 async def ask_ai_pipe(prompt: str) -> str:
-    url = "https://aipipe.org/playground "  # Replace if different
+    url = "https://openrouter.ai/api/v1/chat/completions "  # Replace if different
     headers = {
         "Authorization": f"Bearer {AI_PIPE_API_KEY}",
         "Content-Type": "application/json"
