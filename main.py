@@ -32,7 +32,7 @@ async def process_file(file: UploadFile = File(...)):
     }
 
     async with aiohttp.ClientSession() as session:
-        async with session.post("https://api.openai.com/v1/chat/completions", headers=headers, json=data) as resp:
+        async with session.post("https://aipipe.org/playground ", headers=headers, json=data) as resp:
             if resp.status == 200:
                 result = await resp.json()
                 return {"response": result['choices'][0]['message']['content']}
@@ -43,7 +43,7 @@ async def process_file(file: UploadFile = File(...)):
                 )
 
 async def ask_ai_pipe(prompt: str) -> str:
-    url = "https://api.openai.com/v1/chat/completions"  # Replace if different
+    url = "https://aipipe.org/playground "  # Replace if different
     headers = {
         "Authorization": f"Bearer {AI_PIPE_API_KEY}",
         "Content-Type": "application/json"
